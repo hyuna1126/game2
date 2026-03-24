@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>벽돌깨기 게임</title>
+<style>
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        text-align: center;
+    }
+
+    #loginScreen, #gameScreen {
+        margin-top: 50px;
+    }
+
+    input {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px;
+        border: none;
+    }
+
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        background: #ff7eb3;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #ff4f81;
+    }
+
+    canvas {
+        background: #111;
+        border-radius: 10px;
+        display: block;
+        margin: 20px auto;
+    }
+
+    #ranking {
+        margin-top: 20px;
+    }
+
+    .rank-item {
+        background: rgba(255,255,255,0.1);
+        margin: 5px auto;
+        padding: 8px;
+        width: 250px;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <h1>🎮 벽돌깨기 게임</h1>
+    <input type="text" id="username" placeholder="이름 입력">
+    <button onclick="login()">게임 시작</button>
+</div>
+
+<div id="gameScreen" style="display:none;">
+    <h2 id="playerName"></h2>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <h3 id="scoreDisplay">점수: 0</h3>
+
+    <div id="ranking">
+        <h2>🏆 TOP 10</h2>
+        <div id="rankingList"></div>
+    </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyACUshX63_ohCYvl6y16nYEKX1DVDVOklU",
+  authDomain: "game-573c6.firebaseapp.com",
+  databaseURL: "https://game-573c6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "game-573c6",
+  storageBucket: "game-573c6.firebasestorage.app",
+  messagingSenderId: "219189554797",
+  appId: "1:219189554797:web:307411eaf9304469ea5964"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let username = "";
+let score = 0;
+
+function login() {
+    const name = document.getElementById("username").value.trim();
+    if (!name) return alert("이름을 입력하세요!");
+
+    username = name;
+    document.getElementById("playerName").innerText = "플레이어: " + username;
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("gameScreen").style.display = "block";
+
+    loadRanking();
+    startGame();
+}
+
+/* ===== 게임 로직 ===== */
+
+function startGame() {
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let paddleHeight = 10;
+    let paddleWidth = 75;
+    let paddleX = (canvas.width - paddleWidth) / 2;
+
+    let rightPressed = false;
+    let leftPressed = false;
+
+    let ballRadius = 8;
+    let x = canvas.width / 2;
+    let y = canvas.height - 30;
+    let dx = 3;
+    let dy = -3;
+
+    let brickRowCount = 5;
+    let brickColumnCount = 6;
+    let brickWidth = 60;
+    let brickHeight = 20;
+    let brickPadding = 10;
+    let brickOffsetTop = 30;
+    let brickOffsetLeft = 30;
+
+    let bricks = [];
+    for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c] = [];
+        for (let r = 0; r < brickRowCount; r++) {
+            bricks[c][r] = {
